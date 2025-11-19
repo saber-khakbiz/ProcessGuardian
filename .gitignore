@@ -1,0 +1,16 @@
+# Python compilation
+__pycache__/
+*.py[cod]
+
+# Local config and logs (Don't upload your personal settings!)
+guardian_config.json
+guardian_events.log
+
+# Virtual environments
+venv/
+env/
+
+# PyInstaller artifacts (When you build exe)
+build/
+dist/
+*.spec
