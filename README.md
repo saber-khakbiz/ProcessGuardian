@@ -22,7 +22,7 @@ Go to the [Releases](../../releases) page and download the latest `ProcessGuardi
 
 1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/YOUR_USERNAME/Process-Guardian.git](https://github.com/YOUR_USERNAME/Process-Guardian.git)
+    git clone [https://github.com/saber-khakbiz/Process-Guardian.git](https://github.com/saber-khakbiz/ProcessGuardian.git)
     cd Process-Guardian
     ```
 
