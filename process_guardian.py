@@ -221,7 +221,7 @@ class ModernProcessMonitor:
     def show_about_dialog(self):
         dialog = tk.Toplevel(self.root)
         dialog.title("About")
-        dialog.geometry("360x400") # Corrected Dimensions
+        dialog.geometry("360x400") 
         dialog.configure(bg=self.bg_color)
         dialog.transient(self.root)
         
@@ -236,7 +236,7 @@ class ModernProcessMonitor:
         
         tk.Label(frame, text="⚡", font=("Segoe UI", 48), bg=self.bg_color, fg=self.accent_color).pack(pady=(5, 0))
         tk.Label(frame, text="Process Guardian", font=("Segoe UI", 16, "bold"), bg=self.bg_color, fg=self.fg_color).pack(pady=5)
-        tk.Label(frame, text="Version 2.0 (Ultimate)", font=("Segoe UI", 10), bg=self.bg_color, fg=self.warning_color).pack()
+        tk.Label(frame, text="Version 2.1 (Stable)", font=("Segoe UI", 10), bg=self.bg_color, fg=self.warning_color).pack()
         tk.Label(frame, text="Features:\n• Auto-Restart & Crash Detection\n• 'Not Responding' Check\n• Event Logging\n• Smart Widget Mode", font=("Segoe UI", 9), bg=self.bg_color, fg=self.fg_color, justify=tk.CENTER).pack(pady=15)
         
         # Developer info at bottom
@@ -356,6 +356,7 @@ class ModernProcessMonitor:
         ram_var = tk.StringVar(value="RAM: 0 MB")
         tk.Label(stats_frame, textvariable=ram_var, font=("Segoe UI", 9), bg=self.card_bg, fg=self.fg_color).pack(side=tk.LEFT, padx=(0, 10))
         
+        # Added Restart Count Label
         restart_var = tk.StringVar(value=f"Restarts: {proc.get('restart_count', 0)}")
         tk.Label(stats_frame, textvariable=restart_var, font=("Segoe UI", 9), bg=self.card_bg, fg=self.accent_color).pack(side=tk.LEFT)
         
@@ -371,7 +372,12 @@ class ModernProcessMonitor:
             if idx in self.monitor_threads: self.stop_monitoring_process(idx)
             else: self.start_monitoring_process(idx)
             
-        toggle_btn = tk.Button(right, text="▶ Start", command=toggle, bg=self.success_color, fg="#000000", relief=tk.FLAT, padx=15, pady=8, cursor="hand2")
+        # Logic to determine button state based on running status
+        is_running = idx in self.monitor_threads
+        btn_text = "⏸ Stop" if is_running else "▶ Start"
+        btn_color = self.error_color if is_running else self.success_color
+
+        toggle_btn = tk.Button(right, text=btn_text, bg=btn_color, fg="#000000", relief=tk.FLAT, padx=15, pady=8, cursor="hand2", command=toggle)
         toggle_btn.pack(side=tk.LEFT, padx=5)
         proc["toggle_btn"] = toggle_btn
         
@@ -390,6 +396,8 @@ class ModernProcessMonitor:
         thread = threading.Thread(target=self.monitor_process, args=(idx,), daemon=True)
         thread.start()
         self.monitor_threads[idx] = thread
+        # No need to update button here manually, refresh list handles it or next loop
+        # But to be responsive, we update:
         if "toggle_btn" in proc: proc["toggle_btn"].config(text="⏸ Stop", bg=self.error_color)
         self.update_status()
         logging.info(f"Started monitoring: {proc['name']}")
@@ -478,11 +486,19 @@ class ModernProcessMonitor:
     def start_all_monitoring(self):
         for idx in range(len(self.processes)):
             if idx not in self.monitor_threads: self.start_monitoring_process(idx)
+        
+        # Refresh the UI list to update all button states at once
+        self.refresh_process_list()
+        
         self.start_all_btn.config(state=tk.DISABLED)
         self.stop_all_btn.config(state=tk.NORMAL)
 
     def stop_all_monitoring(self):
         for idx in list(self.monitor_threads.keys()): self.stop_monitoring_process(idx)
+        
+        # Refresh the UI list to update all button states at once
+        self.refresh_process_list()
+        
         self.start_all_btn.config(state=tk.NORMAL)
         self.stop_all_btn.config(state=tk.DISABLED)
 
