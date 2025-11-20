@@ -9,9 +9,9 @@ import json
 from pathlib import Path
 import sys
 import logging
-import shlex
+import shlex # Added for security
 
-# Setup logging configuration
+# Setup logging system
 logging.basicConfig(
     filename='guardian_events.log',
     level=logging.INFO,
@@ -20,30 +20,30 @@ logging.basicConfig(
 )
 
 class FloatingWidget:
-    """
-    A floating widget that appears when the main application is minimized.
-    Allows dragging and double-click to restore.
-    """
+    """Class to create a small floating widget when the app is minimized"""
     def __init__(self, root, restore_callback):
         self.root = root
         self.restore_callback = restore_callback
         self.widget = tk.Toplevel(root)
-        self.widget.overrideredirect(True)  # Remove window borders
+        self.widget.overrideredirect(True) # Remove window border
         self.widget.attributes('-topmost', True)
         self.widget.geometry("60x60+50+50")
         self.widget.configure(bg="#1e1e2e")
         
-        # Create circular icon look
+        # Create round icon
         self.canvas = tk.Canvas(self.widget, width=60, height=60, bg="#1e1e2e", highlightthickness=0)
         self.canvas.pack()
         
+        # Draw circle and text
         self.canvas.create_oval(5, 5, 55, 55, fill="#89b4fa", outline="#cdd6f4", width=2)
         self.canvas.create_text(30, 30, text="⚡", font=("Segoe UI", 24))
         
-        # Bind events for dragging and restoring
+        # Enable widget dragging
         self.widget.bind("<Button-1>", self.start_move)
         self.widget.bind("<B1-Motion>", self.do_move)
         self.widget.bind("<Double-Button-1>", lambda e: self.restore())
+        
+        # Simple tooltip
         self.widget.bind("<Enter>", lambda e: self.widget.configure(cursor="hand2"))
         
     def start_move(self, event):
@@ -68,10 +68,10 @@ class ModernProcessMonitor:
         self.root.geometry("800x550") 
         self.root.resizable(True, False)
         
-        # Always on Top attribute
+        # Keep window always on top
         self.root.attributes('-topmost', True)
         
-        # Modern Catppuccin color scheme
+        # Modern color scheme
         self.bg_color = "#1e1e2e"
         self.fg_color = "#cdd6f4"
         self.accent_color = "#89b4fa"
@@ -85,68 +85,93 @@ class ModernProcessMonitor:
         
         self.root.configure(bg=self.bg_color)
         
-        # App State
+        # Application variables
         self.monitoring = False
         self.monitor_threads = {}
         self.processes = []
         self.config_file = "guardian_config.json"
         self.floating_widget = None
         
-        # Initialization
+        # Load previous settings
         self.load_config()
+        
+        # Create GUI
         self.create_modern_widgets()
         
-        # Protocol Handlers
+        # Handle window closing
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         
-        # Auto-start logic
+        # Auto-start monitoring if configured
         if self.processes:
             self.root.after(1000, self.auto_start_monitoring)
             logging.info("Application started with auto-monitoring.")
 
     def create_modern_widgets(self):
-        # Fonts
+        # Custom fonts
         title_font = font.Font(family="Segoe UI", size=20, weight="bold")
         header_font = font.Font(family="Segoe UI", size=10, weight="bold")
         normal_font = font.Font(family="Segoe UI", size=9)
         
-        # Main Container
+        # Main container
         main_container = tk.Frame(self.root, bg=self.bg_color)
         main_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
         
-        # 1. Header Section
+        # 1. Title section
         title_frame = tk.Frame(main_container, bg=self.bg_color)
         title_frame.pack(side=tk.TOP, fill=tk.X, pady=(0, 15))
         
-        tk.Label(title_frame, text="⚡ Process Guardian", font=title_font, bg=self.bg_color, fg=self.accent_color).pack(side=tk.LEFT)
-        tk.Label(title_frame, text="Auto-Recovery & Smart Monitoring", font=("Segoe UI", 9), bg=self.bg_color, fg=self.fg_color).pack(side=tk.LEFT, padx=10)
+        title_label = tk.Label(
+            title_frame, text="⚡ Process Guardian", font=title_font,
+            bg=self.bg_color, fg=self.accent_color
+        )
+        title_label.pack(side=tk.LEFT)
         
-        # 2. Status Bar (Packed bottom to ensure visibility)
+        subtitle_label = tk.Label(
+            title_frame, text="Auto-Recovery & Smart Monitoring",
+            font=("Segoe UI", 9), bg=self.bg_color, fg=self.fg_color
+        )
+        subtitle_label.pack(side=tk.LEFT, padx=10)
+        
+        # 2. Status bar
         status_bar = tk.Frame(main_container, bg=self.card_bg)
         status_bar.pack(side=tk.BOTTOM, fill=tk.X, pady=(10, 0))
         
-        self.status_label = tk.Label(status_bar, text="Ready", font=normal_font, bg=self.card_bg, fg=self.fg_color, anchor=tk.W)
+        self.status_label = tk.Label(
+            status_bar, text="Ready", font=normal_font,
+            bg=self.card_bg, fg=self.fg_color, anchor=tk.W
+        )
         self.status_label.pack(side=tk.LEFT, padx=15, pady=8)
         
-        # 3. Control Panel
+        # 3. Control panel
         control_frame = tk.Frame(main_container, bg=self.card_bg, relief=tk.FLAT)
         control_frame.pack(side=tk.TOP, fill=tk.X, pady=(0, 15))
         
         inner_control = tk.Frame(control_frame, bg=self.card_bg)
         inner_control.pack(fill=tk.X, padx=10, pady=15)
         
-        # Left Buttons
+        # Left Side Buttons
         self.create_btn(inner_control, "➕ Add", self.add_process_dialog, self.accent_color, header_font)
         self.create_btn(inner_control, "💾 Save", self.manual_save_config, self.save_color, header_font)
         self.create_btn(inner_control, "📋 Logs", self.show_logs_dialog, self.log_color, header_font)
         self.start_all_btn = self.create_btn(inner_control, "▶ Start All", self.start_all_monitoring, self.success_color, header_font)
         self.stop_all_btn = self.create_btn(inner_control, "⏸ Stop All", self.stop_all_monitoring, self.error_color, header_font, state=tk.DISABLED)
         
-        # Right Buttons
-        tk.Button(inner_control, text="ℹ About", command=self.show_about_dialog, bg=self.info_color, fg="#000000", font=normal_font, relief=tk.FLAT, padx=10, pady=8, cursor="hand2").pack(side=tk.RIGHT, padx=2)
-        tk.Button(inner_control, text="🚀 Startup", command=self.add_to_startup, bg=self.warning_color, fg="#000000", font=normal_font, relief=tk.FLAT, padx=10, pady=8, cursor="hand2").pack(side=tk.RIGHT, padx=2)
+        # Right Side Buttons
+        about_btn = tk.Button(
+            inner_control, text="ℹ About", command=self.show_about_dialog,
+            bg=self.info_color, fg="#000000", font=normal_font, relief=tk.FLAT,
+            padx=10, pady=8, cursor="hand2"
+        )
+        about_btn.pack(side=tk.RIGHT, padx=2)
+        
+        startup_btn = tk.Button(
+            inner_control, text="🚀 Startup", command=self.add_to_startup,
+            bg=self.warning_color, fg="#000000", font=normal_font, relief=tk.FLAT,
+            padx=10, pady=8, cursor="hand2"
+        )
+        startup_btn.pack(side=tk.RIGHT, padx=2)
 
-        # 4. Process List Area
+        # 4. Process list
         list_container = tk.Frame(main_container, bg=self.bg_color)
         list_container.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         
@@ -168,8 +193,6 @@ class ModernProcessMonitor:
         btn.pack(side=tk.LEFT, padx=3)
         return btn
 
-    # --- Core Functionality ---
-
     def show_logs_dialog(self):
         dialog = tk.Toplevel(self.root)
         dialog.title("Event Logs")
@@ -189,7 +212,7 @@ class ModernProcessMonitor:
         except Exception as e:
             log_area.insert(tk.END, f"Error reading logs: {e}")
             
-        log_area.configure(state='disabled') 
+        log_area.configure(state='disabled')
 
     def manual_save_config(self):
         self.save_config()
@@ -198,7 +221,7 @@ class ModernProcessMonitor:
     def show_about_dialog(self):
         dialog = tk.Toplevel(self.root)
         dialog.title("About")
-        dialog.geometry("420x340") # Optimized dimensions
+        dialog.geometry("360x400") # Corrected Dimensions
         dialog.configure(bg=self.bg_color)
         dialog.transient(self.root)
         
@@ -213,24 +236,23 @@ class ModernProcessMonitor:
         
         tk.Label(frame, text="⚡", font=("Segoe UI", 48), bg=self.bg_color, fg=self.accent_color).pack(pady=(5, 0))
         tk.Label(frame, text="Process Guardian", font=("Segoe UI", 16, "bold"), bg=self.bg_color, fg=self.fg_color).pack(pady=5)
-        tk.Label(frame, text="Version 2.0 Ultimate", font=("Segoe UI", 10), bg=self.bg_color, fg=self.warning_color).pack()
+        tk.Label(frame, text="Version 2.0 (Ultimate)", font=("Segoe UI", 10), bg=self.bg_color, fg=self.warning_color).pack()
+        tk.Label(frame, text="Features:\n• Auto-Restart & Crash Detection\n• 'Not Responding' Check\n• Event Logging\n• Smart Widget Mode", font=("Segoe UI", 9), bg=self.bg_color, fg=self.fg_color, justify=tk.CENTER).pack(pady=15)
         
-        desc = "An advanced process monitoring tool that ensures\nyour critical applications stay running 24/7.\nIncludes crash detection & logging."
-        tk.Label(frame, text=desc, font=("Segoe UI", 9), bg=self.bg_color, fg=self.fg_color, justify=tk.CENTER).pack(pady=15)
-        
-        # Developer Name at Bottom
-        tk.Label(frame, text="Developed by: Saber Khakbiz", font=("Segoe UI", 10, "bold"), bg=self.bg_color, fg=self.info_color).pack(side=tk.BOTTOM, pady=(5, 15))
+        # Developer info at bottom
+        tk.Label(frame, text="Developed by: Saber Khakbiz", font=("Segoe UI", 9, "bold"), bg=self.bg_color, fg=self.info_color).pack(side=tk.BOTTOM, pady=5)
         tk.Button(frame, text="Close", command=dialog.destroy, bg=self.card_bg, fg=self.fg_color, relief=tk.FLAT, cursor="hand2").pack(side=tk.BOTTOM, pady=5)
 
     def add_process_dialog(self):
         dialog = tk.Toplevel(self.root)
         dialog.title("Add New Process")
-        dialog.geometry("550x420")
+        dialog.geometry("550x400")
         dialog.configure(bg=self.bg_color)
         dialog.attributes('-topmost', True)
         dialog.transient(self.root)
         dialog.grab_set()
         
+        # Center
         dialog.update_idletasks()
         x = (dialog.winfo_screenwidth() // 2) - (dialog.winfo_width() // 2)
         y = (dialog.winfo_screenheight() // 2) - (dialog.winfo_height() // 2)
@@ -246,7 +268,7 @@ class ModernProcessMonitor:
             entry.grid(row=row, column=1, padx=5, pady=5)
             return var, entry
             
-        path_var, _ = create_row("App Path:", 0)
+        path_var, path_entry = create_row("App Path:", 0)
         def browse():
             filename = filedialog.askopenfilename(title="Select Executable", filetypes=(("Exe files", "*.exe"), ("All files", "*.*")))
             if filename:
@@ -392,38 +414,33 @@ class ModernProcessMonitor:
         while proc.get("monitoring", False):
             try:
                 found_process = None
-                # Robust process searching
                 for p in psutil.process_iter(['name', 'cpu_percent', 'memory_info', 'status']):
                     try:
                         if p.info['name'].lower() == proc["name"].lower():
                             found_process = p
                             break
-                    except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
                         continue
                 
                 if found_process:
-                    try:
-                        status = found_process.info['status']
-                        cpu = found_process.cpu_percent(interval=0.1)
-                        ram = found_process.memory_info().rss / 1024 / 1024
-                        
-                        if "cpu_var" in proc: proc["cpu_var"].set(f"CPU: {cpu:.1f}%")
-                        if "ram_var" in proc: proc["ram_var"].set(f"RAM: {ram:.1f} MB")
-                        
-                        # Smart Crash Detection (Zombies/Hang)
-                        if status in [psutil.STATUS_ZOMBIE, psutil.STATUS_DEAD]:
-                            logging.warning(f"Process {proc['name']} is detected as {status}. Restarting...")
-                            if "status_var" in proc: proc["status_var"].set(f"⚠️ {status.title()}")
-                            try:
-                                found_process.terminate()
-                            except: pass
-                            time.sleep(1)
-                            self.start_process(idx)
-                        else:
-                             if "status_var" in proc: proc["status_var"].set("🟢 Running")
-                    except Exception:
-                         # Process might have closed during check
-                         continue
+                    status = found_process.info['status']
+                    cpu = found_process.cpu_percent(interval=0.1)
+                    ram = found_process.memory_info().rss / 1024 / 1024
+                    
+                    if "cpu_var" in proc: proc["cpu_var"].set(f"CPU: {cpu:.1f}%")
+                    if "ram_var" in proc: proc["ram_var"].set(f"RAM: {ram:.1f} MB")
+                    
+                    # Smart Crash Detection
+                    if status in [psutil.STATUS_ZOMBIE, psutil.STATUS_DEAD]:
+                        logging.warning(f"Process {proc['name']} is detected as {status}. Restarting...")
+                        if "status_var" in proc: proc["status_var"].set(f"⚠️ {status.title()}")
+                        try:
+                            found_process.terminate()
+                        except: pass
+                        time.sleep(1)
+                        self.start_process(idx)
+                    else:
+                         if "status_var" in proc: proc["status_var"].set("🟢 Running")
                 else:
                     if "status_var" in proc: proc["status_var"].set("🔴 Crashed/Closed")
                     logging.warning(f"Process {proc['name']} not found. Restarting...")
@@ -438,11 +455,16 @@ class ModernProcessMonitor:
     def start_process(self, idx):
         proc = self.processes[idx]
         try:
+            # --- Security Fix Here: No Shell=True ---
             cmd = [proc["path"]]
             if proc.get("args"):
+                # Parse string args into list safely
                 cmd.extend(shlex.split(proc["args"]))
             
-            subprocess.Popen(cmd, shell=True)
+            # Set cwd to the executable's folder to prevent path errors
+            process_dir = os.path.dirname(proc["path"])
+            
+            subprocess.Popen(cmd, shell=False, cwd=process_dir)
             
             proc["restart_count"] = proc.get("restart_count", 0) + 1
             if "restart_var" in proc: proc["restart_var"].set(f"Restarts: {proc['restart_count']}")
